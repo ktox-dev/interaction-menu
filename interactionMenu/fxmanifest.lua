@@ -68,7 +68,13 @@ files {
      'lua/client/icons/indicator.png',
      'lua/client/icons/glowingball.png',
      'lua/client/icons/*.*',
-     'lua/bridge/qb.lua',
+
+     -- Die Bruecken werden zur Laufzeit ueber LoadResourceFile geholt, nicht als
+     -- Skript eingebunden. Client-seitig kann das nur Dateien lesen, die hier
+     -- stehen -- upstream stand nur `qb.lua` drin, `esx.lua` fehlte. Die
+     -- ESX-Bruecke laedt dort also bei niemandem, und unsere ox.lua haette
+     -- dasselbe Schicksal gehabt. Der Glob deckt jetzt alle ab.
+     'lua/bridge/*.lua',
 }
 
 provide 'qb-target'
