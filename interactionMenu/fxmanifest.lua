@@ -61,6 +61,12 @@ server_script {
 }
 
 files {
+     -- Unter Enhanced scheint der Glob 'icons/*.*' nicht mehr zu greifen:
+     -- CreateRuntimeTextureFromImage findet indicator.png nicht. Deshalb die
+     -- beiden Dateien zusaetzlich namentlich. Der Glob bleibt fuer den Fall,
+     -- dass spaeter weitere Icons dazukommen.
+     'lua/client/icons/indicator.png',
+     'lua/client/icons/glowingball.png',
      'lua/client/icons/*.*',
      'lua/bridge/qb.lua',
 }

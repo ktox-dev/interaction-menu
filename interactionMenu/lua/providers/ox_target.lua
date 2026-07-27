@@ -1,5 +1,7 @@
 if not Config.provide.ox_target then return end
 
+local StateManager = Util.StateManager()
+
 local Registry = {
     models = {},
     entities = {},
@@ -26,7 +28,13 @@ local function convert_options(options)
     local _options = {}
 
     for index, option in ipairs(options) do
-        local opt = table.clone and table.clone(option) or {}
+        -- Upstream stand hier `table.clone and table.clone(option) or {}`.
+        -- `table.clone` kommt aus ox_lib, und `@ox_lib/init.lua` ist im
+        -- fxmanifest auskommentiert -- der Ausdruck faellt damit auf eine
+        -- **leere Tabelle** zurueck und der Eintrag verliert Label, Symbol,
+        -- onSelect, alles. Deshalb hier eine eigene flache Kopie.
+        local opt = {}
+        for k, v in pairs(option) do opt[k] = v end
 
         if opt.event then
             opt.event = {
@@ -477,3 +485,54 @@ replaceExport('addPolyZone', addPolyZone)
 replaceExport('removeZone', removeZone)
 
 replaceExport('disableTargeting', disableTargeting)
+
+-- Nachgereicht: bei swkeep fehlen fuenf Exporte, die es im echten ox_target gibt
+-- (client/api.lua). Ohne sie laeuft ein Aufruf in `not_supported`.
+
+---@return boolean
+local function isActive()
+    return StateManager.get('active') == true
+end
+
+---@param id string|number
+---@return boolean
+local function zoneExists(id)
+    return Container.get(id) ~= nil and not GC.isMarked(id)
+end
+
+--- ox_target legt damit Eintraege auf **alles** an. Die naechstliegende
+--- Entsprechung ist das globale Menue auf `entities`.
+local function addGlobalOption(options)
+    local resource = GetInvokingResource()
+    options = options and Util.ensureTable(options) or nil
+
+    for _, option in ipairs(options) do
+        Container.createGlobal {
+            id = make_id("global", resource, joaat_safe(option.label)),
+            type = 'entities',
+            offset = vec3(0, 0, 0),
+            maxDistance = option.distance,
+            options = convert_options { option },
+            schemaType = 'ox_target'
+        }
+    end
+end
+
+local function removeGlobalOption(optionNames)
+    local resource = GetInvokingResource()
+    optionNames = optionNames and Util.ensureTable(optionNames) or nil
+
+    for _, label in ipairs(optionNames) do
+        GC.flag(make_id("global", resource, joaat_safe(label)))
+    end
+end
+
+replaceExport('isActive', isActive)
+replaceExport('zoneExists', zoneExists)
+replaceExport('addGlobalOption', addGlobalOption)
+replaceExport('removeGlobalOption', removeGlobalOption)
+
+-- `getTargetOptions` liest im Original die Eintraege einer Entitaet aus. Das laesst
+-- sich hier nicht ehrlich nachbilden. Absichtlich mit nil registriert: der Aufruf
+-- landet dann in `not_supported` und meldet sich laut, statt still nichts zu liefern.
+replaceExport('getTargetOptions', nil)

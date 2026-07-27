@@ -54,7 +54,7 @@ local function load_bridge_modules(modules)
         end
     end
 
-    for _, key in ipairs({ "hasItem", "getJob", "getGang" }) do
+    for _, key in ipairs({ "hasItem", "getJob", "getGang", "hasGroup" }) do
         for _, mod in pairs(Bridge.modules) do
             if mod[key] then
                 Bridge[key] = mod[key]
@@ -72,4 +72,10 @@ end
 
 if GetResourceState('es_extended') == 'started' then
     load_bridge_modules({ "esx" })
+end
+
+-- ox_core kennt keine Jobs, sondern Gruppen. Die Bruecke liefert deshalb `hasGroup`
+-- statt `getJob`/`getGang`; siehe lua/bridge/ox.lua.
+if GetResourceState('ox_core') == 'started' then
+    load_bridge_modules({ "ox" })
 end

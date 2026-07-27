@@ -10,11 +10,16 @@
 
 Config = {}
 
-Config.devMode = false
-Config.debugPoly = false
+Config.devMode = true
+Config.debugPoly = true
 
+-- Das fxmanifest meldet `provide 'ox_target'`, also halten alle Resourcen
+-- ox_target fuer gestartet. Stand der Schalter hier auf false, kehrte der
+-- Provider beim Laden sofort zurueck und registrierte seine Exporte nie --
+-- ox_doorlock lief damit in „No such export addGlobalObject in resource
+-- ox_target". Entweder der Schalter ist an oder das `provide` muss raus.
 Config.provide = {
-    ox_target = false,
+    ox_target = true,
     ox_target_test = false,
     qb_target = false,
     qb_target_test = false
@@ -22,9 +27,9 @@ Config.provide = {
 
 Config.indicator = {
     enabled = true,
-    eye_enabled = false,
+    eye_enabled = true,
 
-    outline_enabled = false,
+    outline_enabled = true,
     outline_color = { 255, 255, 255, 255 },
 }
 

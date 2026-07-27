@@ -223,6 +223,7 @@ local function buildOption(data, instance)
             item = option.item,
             items = option.items,
             has_any = option.has_any,
+            groups = option.groups,
             job = option.job and transformRestrictions(option.job),
             gang = option.gang and transformRestrictions(option.gang),
 
@@ -1044,7 +1045,7 @@ local function apply_visibility_rule(option, option_index, menu_data, pt, change
 end
 
 local function _validate_restrictions(restrictions)
-    if not Bridge.active then return true end
+    if not Bridge.getJob then return false end
 
     local job, job_level = Bridge.getJob()
     local gang, gang_level = Bridge.getGang()
@@ -1066,17 +1067,50 @@ local function _validate_restrictions(restrictions)
     return false
 end
 
-local function apply_framework_restrictions(updatedElements, menuId, option, optionIndex, menuOriginalData, pt, changes)
-    if not Bridge.active then return false end
-    if not (option.item or option.items or option.job or option.gang) then return false end
+local warned_about_missing_bridge = false
 
-    local shouldHide = false
-    if option.item then
-        local ok = Bridge.hasItem(option.item)
-        shouldHide = type(ok) == "boolean" and not ok or false
+--- Meldet einmalig, dass ein Gatter gesetzt ist, aber niemand es beantworten kann.
+local function warn_unanswerable(what)
+    if warned_about_missing_bridge then return end
+    warned_about_missing_bridge = true
+    warn(('an option is gated by `%s`, but no bridge can answer it -- the option stays hidden. ' ..
+        'Start a supported framework (ox_core, es_extended, qb-core) or use `canInteract`.'):format(what))
+end
+
+--- Wertet die Gatter am Eintrag aus: `item`, `items`, `groups`, `job`, `gang`.
+---
+--- Abweichung von upstream, absichtlich: dort stand hier
+---     `if not Bridge.active then return false end`
+--- Ohne geladene Bruecke war ein gegatterter Eintrag damit nicht etwa gesperrt,
+--- sondern **immer sichtbar** -- eine Absicherung, die wie eine aussieht und keine
+--- ist. Wir blenden stattdessen aus und melden es einmal.
+local function apply_framework_restrictions(updatedElements, menuId, option, optionIndex, menuOriginalData, pt, changes)
+    if not (option.item or option.items or option.groups or option.job or option.gang) then
+        return false
     end
 
-    if option.items then
+    local shouldHide = false
+
+    if option.groups then
+        if Bridge.hasGroup then
+            shouldHide = not Bridge.hasGroup(option.groups)
+        else
+            warn_unanswerable('groups')
+            shouldHide = true
+        end
+    end
+
+    if not shouldHide and (option.item or option.items) then
+        if not Bridge.hasItem then
+            warn_unanswerable('item')
+            shouldHide = true
+        elseif option.item then
+            local ok = Bridge.hasItem(option.item)
+            shouldHide = type(ok) == "boolean" and not ok or false
+        end
+    end
+
+    if not shouldHide and option.items and Bridge.hasItem then
         if option.has_any then
             -- only needs one of the items
             shouldHide = true
@@ -1088,7 +1122,6 @@ local function apply_framework_restrictions(updatedElements, menuId, option, opt
             end
         else
             -- must have all items
-            shouldHide = false
             for _, item in pairs(option.items) do
                 if not Bridge.hasItem(item) then
                     shouldHide = true
@@ -1098,9 +1131,14 @@ local function apply_framework_restrictions(updatedElements, menuId, option, opt
         end
     end
 
-    if option.job or option.gang then
-        local allowed = _validate_restrictions({ job = option.job, gang = option.gang })
-        shouldHide = type(allowed) == "boolean" and not allowed or shouldHide
+    if not shouldHide and (option.job or option.gang) then
+        if not Bridge.getJob then
+            warn_unanswerable('job')
+            shouldHide = true
+        else
+            local allowed = _validate_restrictions({ job = option.job, gang = option.gang })
+            shouldHide = type(allowed) == "boolean" and not allowed or shouldHide
+        end
     end
 
     return update_field(changes, option.flags, "hide", shouldHide)
