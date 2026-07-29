@@ -359,10 +359,13 @@ function Render.generic(data, metadata, callbacks)
     local running = true
     Container.current = data
 
+    -- Inhalte eines offenen Menues neu auswerten. Der Takt war fest auf 1000
+    -- verdrahtet; wer in `bind` etwas anzeigt, das sich waehrend des
+    -- Hinschauens aendert, sah es dadurch bis zu eine Sekunde zu spaet.
     CreateThread(function()
         while running do
             Container.syncData(scaleform, data, true)
-            Wait(1000)
+            Wait(Config.intervals.sync or 1000)
         end
     end)
 
@@ -393,15 +396,24 @@ function Render.generic(data, metadata, callbacks)
 
     running = false
     scaleform.send("interactionMenu:hideMenu")
-    Wait(100) -- wait until fade animatnion is finished
-    state_manager.set('isOpen', false)
-    scaleform.setStatus(false)
 
-    -- Trigger onExit
+    -- **Das `onExit` der Menues feuert VOR der Ausblendpause.**
+    --
+    -- Es stand frueher hinter dem `Wait(100)`. Das ist die Wartezeit, bis die
+    -- Ausblendanimation des Scaleforms durch ist -- eine rein optische Sache.
+    -- Wer sich an `onExit` haengt, um eine eigene Anzeige mitzuschliessen, kam
+    -- dadurch systematisch 100 ms zu spaet, und die eigene Anzeige stand
+    -- sichtbar laenger als das Menue.
     for _, menu in pairs(data.menus) do
         Container.triggerInteraction(menu.id, 'onExit', metadata)
     end
 
+    Wait(100) -- wait until fade animatnion is finished
+    state_manager.set('isOpen', false)
+    scaleform.setStatus(false)
+
+    -- Das `onExit` der Funktion raeumt das Scaleform ab und gehoert deshalb
+    -- weiterhin hinter die Pause.
     if callbacks.onExit then callbacks.onExit(data, metadata) end
     Container.current = nil
     state_manager.set('active', false)

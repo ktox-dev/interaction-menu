@@ -45,7 +45,14 @@ Config.interactionAudio = {
 }
 
 Config.intervals = {
-    detection = 400
+    -- Wie oft der Suchstrahl geschossen wird.
+    detection = 400,
+
+    -- Wie oft ein **offenes** Menue seine Inhalte neu auswertet, also `bind`
+    -- und `canInteract`. War vorher fest auf 1000 verdrahtet; hier nur
+    -- herausgezogen, damit man daran drehen kann. Der Wert entspricht dem
+    -- bisherigen Verhalten.
+    sync = 1000,
 }
 
 Config.icons = {
